@@ -12,6 +12,7 @@ import 'package:provider/provider.dart';
 
 import 'AppManager/Helper/snack_bar.dart';
 import 'View/Account/login_view.dart';
+import 'View/category_view.dart';
 import 'View/quiz_view.dart';
 
 void main() {
@@ -61,7 +62,10 @@ class Home extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Material(
-      child: LoginView(),
+      child:
+      //CategoryView()
+      //QuizView()
+      LoginView(),
     );
   }
 }
