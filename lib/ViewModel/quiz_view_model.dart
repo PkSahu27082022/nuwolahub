@@ -1,12 +1,19 @@
 import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:nuvolahub/AppManager/Api/api_call.dart';
+import 'package:nuvolahub/AppManager/Helper/alert.dart';
 import 'package:nuvolahub/AppManager/Helper/loader.dart';
+import 'package:nuvolahub/AppManager/Helper/snack_bar.dart';
 import 'package:nuvolahub/AppManager/Service/navigation_service.dart';
 import 'package:nuvolahub/Model/question_model.dart';
 import 'package:nuvolahub/Model/question_option_model.dart';
+import 'package:nuvolahub/Model/student_result_model.dart';
 import 'package:nuvolahub/View/category_view.dart';
+import 'package:nuvolahub/View/result_view.dart';
+import 'package:nuvolahub/ViewModel/AccountVM/login_view_model.dart';
+import 'package:nuvolahub/ViewModel/category_view_model.dart';
 import 'package:provider/provider.dart';
 
 class QuizViewModel extends ChangeNotifier {
@@ -15,15 +22,20 @@ class QuizViewModel extends ChangeNotifier {
 
   callInit() {
     getQuestion();
-    // remainingTime=10;
-    // startTimer();
+    remainingTime = int.parse(CategoryViewModel.of(NavigationService.context!)
+            .courseList
+            .first
+            .duration
+            .toString()) *
+        60;
+    startTimer();
     notifyListeners();
   }
 
-  List<Question> _question = [];
-  List<Question> get question => _question;
-  set question(List<Question> list) {
-    _question = list;
+  List<Question> _questions = [];
+  List<Question> get questions => _questions;
+  set questions(List<Question> list) {
+    _questions = list;
     notifyListeners();
   }
 
@@ -34,21 +46,42 @@ class QuizViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Question? _currentQuestion;
-  Question? get currentQuestion => _currentQuestion;
-  set currentQuestion(Question? model) {
-    _currentQuestion = model;
+  Question? get currentQuestion =>
+      questions.isNotEmpty ? questions[currentIndex] : null;
+
+  List<QuestionOption> _questionOptions = [];
+  List<QuestionOption> get questionOptions => _questionOptions;
+  set questionOptions(List<QuestionOption> list) {
+    _questionOptions = list;
     notifyListeners();
   }
 
-  List<QuestionOption> _questionOption = [];
-  List<QuestionOption> get questionOption => _questionOption;
-  set questionOption(List<QuestionOption> list) {
-    _questionOption = list;
+  List<StudentResult> _result=[];
+  List<StudentResult> get result => _result;
+  // set result(StudentResult? model) {
+  //   _result = model;
+  //   notifyListeners();
+  // }
+
+  final Map<int, QuestionOption?> _selectedOptions = {};
+  Map<int, QuestionOption?> get selectedOptions => _selectedOptions;
+
+  void addSelectedOption(int questionId, QuestionOption? option) {
+    _selectedOptions[questionId] = option;
     notifyListeners();
   }
 
-  int _remainingTime = 10;
+  QuestionOption? getSelectedOption(int questionId) {
+    return _selectedOptions[questionId];
+  }
+
+  int _remainingTime = int.parse(
+          CategoryViewModel.of(NavigationService.context!)
+              .courseList
+              .first
+              .duration
+              .toString()) *
+      60;
   int get remainingTime => _remainingTime;
   set remainingTime(int val) {
     _remainingTime = val;
@@ -60,15 +93,38 @@ class QuizViewModel extends ChangeNotifier {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_remainingTime > 0) {
         remainingTime--;
+        updateDisplayTime();
       } else {
-        Navigator.pushReplacement(
-            NavigationService.context!,
-            MaterialPageRoute(
-              builder: (context) => const CategoryView(),
-            ));
+        showResult();
+        // Navigator.pushReplacement(
+        //   NavigationService.context!,
+        //   MaterialPageRoute(
+        //     builder: (context) => const CategoryView(),
+        //   ),
+        // );
         _timer.cancel();
       }
     });
+  }
+
+  void paperCancel() {
+    _timer.cancel();
+    Navigator.pushAndRemoveUntil(
+      NavigationService.context!,
+      MaterialPageRoute(
+        builder: (context) => const CategoryView(),
+      ),
+      (Route<dynamic> route) =>
+          false, // This ensures all previous routes are removed
+    );
+    notifyListeners();
+  }
+
+  String updateDisplayTime() {
+    int hours = _remainingTime ~/ 3600;
+    int minutes = (_remainingTime % 3600) ~/ 60;
+    //int seconds = _remainingTime % 60;
+    return '$hours h: $minutes min';
   }
 
   final ApiCall _apiCall = ApiCall();
@@ -80,11 +136,11 @@ class QuizViewModel extends ChangeNotifier {
           .call(url: 'QuestionsAPI.php', apiCallType: ApiCallType.get())
           .then((data) async {
         if (data['records'] != null) {
-          _question = (data['records'] as List)
+          _questions = (data['records'] as List)
               .map((e) => Question.fromJson(e))
               .toList();
-          currentQuestion = _question.first;
-          await getQuestionOption(showLoading: false);
+          currentIndex = 0;
+          await getQuestionOptions(showLoading: false);
         }
       });
       PD.hide();
@@ -95,9 +151,9 @@ class QuizViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> getQuestionOption({bool showLoading=true}) async {
+  Future<void> getQuestionOptions({bool showLoading = true}) async {
     try {
-      if(showLoading){
+      if (showLoading) {
         PD.show(message: "Please wait..");
       }
       await _apiCall
@@ -106,13 +162,12 @@ class QuizViewModel extends ChangeNotifier {
               apiCallType: ApiCallType.get())
           .then((data) {
         if (data['records'] != null) {
-          _questionOption = (data['records'] as List)
+          _questionOptions = (data['records'] as List)
               .map((e) => QuestionOption.fromJson(e))
               .toList();
-          //_currentQuestionOption = _questionOption.first;
         }
       });
-      if(showLoading){
+      if (showLoading) {
         PD.hide();
       }
     } catch (e) {
@@ -123,23 +178,125 @@ class QuizViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  void getNextQuestion() {
-    if (_currentIndex < _question.length - 1) {
+  void moveToNextQuestion() {
+    if (_currentIndex < _questions.length - 1) {
       _currentIndex++;
-      _currentQuestion = _question[_currentIndex];
-      getQuestionOption();
-      // _currentQuestionOption=questionOption.firstWhere((e) => e.id==_currentQuestion?.id);
+      getQuestionOptions();
     }
     notifyListeners();
   }
 
-  void getPreviousQuestion() {
+  void moveToPreviousQuestion() {
     if (_currentIndex > 0) {
       _currentIndex--;
-      _currentQuestion = _question[_currentIndex];
-      getQuestionOption();
-      // _currentQuestionOption=questionOption.firstWhere((e) => e.id==_currentQuestion?.id);
+      getQuestionOptions();
     }
     notifyListeners();
   }
+
+  bool isQuizComplete() {
+    return _questions
+        .every((question) => _selectedOptions.containsKey(question.id));
+  }
+
+  Future<void> saveAnswerOfQuestion({required QuestionOption option}) async {
+    try {
+      PD.show(message: "Please wait..");
+      await _apiCall
+          .call(
+              url: 'SavePaperAPI.php',
+              apiCallType: ApiCallType.post(body: {
+                "StdId": LoginViewModel.of(NavigationService.context!).user.id,
+                "QueId": option.questionId,
+                "AnsId": option.id,
+                "PapId": CategoryViewModel.of(NavigationService.context!)
+                    .courseList
+                    .first
+                    .id,
+                "Status": "1"
+              }))
+          .then((data) {
+        if (data["status"] == true) {
+          PD.hide();
+        }
+      });
+    } catch (e) {
+      // PD.hide();
+      if (kDebugMode) {
+        print(e);
+      }
+    }
+  }
+
+ String? id= LoginViewModel.of(NavigationService.context!).user.id;
+  String? paperId=CategoryViewModel.of(NavigationService.context!)
+      .courseList
+      .first
+      .id;
+
+  Future<void> showResult() async {
+    try {
+     // PD.show(message: "Please wait...");
+      await _apiCall
+          .call(
+              url: "Student_ResultAPI.php?Std_ID=$id&Paper_Id=$paperId",
+              apiCallType: ApiCallType.get())
+          .then((data) {
+        if (data["status"] == true) {
+          PD.hide();
+          _result = (data["records"] as List)
+              .map((e) => StudentResult.fromJson(e))
+              .toList();
+          Navigator.pushAndRemoveUntil(
+              NavigationService.context!,
+              MaterialPageRoute(
+                  builder: (context) => ResultView(studentResultList: _result)),
+              (Route<dynamic> rote) => false);
+        }else{
+         // PD.hide();
+          AppSnackBar.show(message: data["message"]);
+        }
+      });
+    } catch (e) {
+     // PD.hide();
+      if (kDebugMode) {
+        print(e);
+      }
+    }
+  }
+
+
+
+  Future<void> finalSubmit() async {
+    try {
+      PD.show(message: "Please wait...");
+      await _apiCall
+          .call(
+          url: "FinalSubmitAPI.php?Std_ID=$id&Paper_Id=$paperId&course_id=12",
+          apiCallType: ApiCallType.get())
+          .then((data) {
+        if (data["status"] == true) {
+          showResult();
+        }else{
+          PD.hide();
+          AppSnackBar.show(message: data["message"]);
+        }
+      });
+    } catch (e) {
+      PD.hide();
+      if (kDebugMode) {
+        print(e);
+      }
+    }
+  }
+
+  // int calculateScore() {
+  //   int score = 0;
+  //   for (var question in _questions) {
+  //     if (_selectedOptions[question.id]?.isCorrect ?? false) {
+  //       score++;
+  //     }
+  //   }
+  //   return score;
+  // }
 }

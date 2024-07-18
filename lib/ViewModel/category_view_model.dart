@@ -15,6 +15,14 @@ class CategoryViewModel extends ChangeNotifier {
 
   final ApiCall _apiCall = ApiCall();
 
+  CategoryRecord? _selectedCourse;
+  CategoryRecord? get selectedCourse=>_selectedCourse;
+  set selectedCourse( CategoryRecord? val){
+    _selectedCourse=val;
+    notifyListeners();
+  }
+
+
   List<CategoryRecord> _categoryList = [];
   List<CategoryRecord> get categoryList => _categoryList;
   set categoryList(List<CategoryRecord> list) {
@@ -40,6 +48,7 @@ class CategoryViewModel extends ChangeNotifier {
     try {
       await _apiCall.call(url: "categoryAPI.php", apiCallType: ApiCallType.get()).then((data) {
         _categoryList = (data["records"] as List).map((e) => CategoryRecord.fromJson(e)).toList();
+
       });
     } catch (e) {
       if (kDebugMode) {

@@ -53,13 +53,14 @@ class LoginViewModel extends ChangeNotifier {
           await CategoryViewModel.of(NavigationService.context!).getNewsDetails();
           await CategoryViewModel.of(NavigationService.context!).getCategory();
           Alert.show(data["message"]);
+          PD.hide();
           await Navigator.pushReplacement(NavigationService.context!,
               MaterialPageRoute(builder: (context) => const CategoryView()));
         } else {
+          PD.hide();
           AppSnackBar.show(message: data["message"]);
         }
       });
-      PD.hide();
     } catch (e) {
       PD.hide();
     }

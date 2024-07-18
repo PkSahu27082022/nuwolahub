@@ -1,8 +1,10 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:nuvolahub/AppManager/Api/api_call.dart';
 import 'package:nuvolahub/AppManager/Helper/alert.dart';
 import 'package:nuvolahub/AppManager/Helper/loader.dart';
 import 'package:nuvolahub/AppManager/Helper/snack_bar.dart';
+import 'package:nuvolahub/AppManager/Service/navigation_service.dart';
 import 'package:provider/provider.dart';
 
 class RegisterViewModel extends ChangeNotifier {
@@ -37,6 +39,7 @@ class RegisterViewModel extends ChangeNotifier {
           })).then((data) {
         if(data["status"]==true){
           Alert.show(data["message"]);
+          Navigator.pop(NavigationService.context!);
         }else{
           AppSnackBar.show(message: data["message"]);
         }

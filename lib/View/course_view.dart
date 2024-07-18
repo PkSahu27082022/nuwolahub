@@ -33,7 +33,7 @@ class _CourseViewState extends State<CourseView> {
     final theme = Theme.of(context).textTheme;
     return Scaffold(
         appBar: AppBar(
-          title:  Text(widget.record.courseName??""),
+          title:  Text(CategoryViewModel.of(context).selectedCourse?.courseName??""),
           backgroundColor: Colors.white24,
           elevation: 0,
           foregroundColor: Colors.black87,

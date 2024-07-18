@@ -1,22 +1,66 @@
 import 'package:flutter/material.dart';
 import 'package:nuvolahub/View/quiz_view.dart';
+import 'package:nuvolahub/ViewModel/category_view_model.dart';
 import 'package:nuvolahub/ViewModel/paper_view_model.dart';
 import 'package:provider/provider.dart';
 
 class InstructionView extends StatelessWidget {
   const InstructionView({super.key});
 
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context).textTheme;
     return Scaffold(
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 15),
-        child: SingleChildScrollView(
+      appBar: AppBar(
+
+        title:   Text(CategoryViewModel.of(context).selectedCourse?.courseName??""),
+        surfaceTintColor: Colors.white,
+      ),
+      bottomNavigationBar: Selector<PaperViewModel, bool>(
+        shouldRebuild: (previous, next) => true,
+        selector: (p0, p1) => p1.isReadInstruction,
+        builder: (context, bool isRead, child) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12,vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Checkbox(
+                      value: isRead,
+                      onChanged: (val) {
+                        if (val != null) {
+                          PaperViewModel.of(context).isReadInstruction =
+                              val;
+                        }
+                      }),
+                  const SizedBox(width: 10),
+                  const Text("Are you read it carefully?"),
+                ],
+              ),
+              isRead
+                  ? OutlinedButton(
+                  onPressed: () {
+                    Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const QuizView()));
+                  },
+                  child: const Text("Next"))
+                  : const SizedBox.shrink()
+            ],
+          ),
+        ),
+      ),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 15),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 45),
+
               Text("Instructions", style: theme.headlineMedium),
               const SizedBox(height: 8),
               Text(
@@ -144,39 +188,7 @@ class InstructionView extends StatelessWidget {
                   data:
                       "To zoom the image provided in the question roll over it."),
               const SizedBox(height: 15),
-              Selector<PaperViewModel, bool>(
-                shouldRebuild: (previous, next) => true,
-                selector: (p0, p1) => p1.isReadInstruction,
-                builder: (context, bool isRead, child) => Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Checkbox(
-                            value: isRead,
-                            onChanged: (val) {
-                              if (val != null) {
-                                PaperViewModel.of(context).isReadInstruction =
-                                    val;
-                              }
-                            }),
-                        const SizedBox(width: 10),
-                        const Text("Are you read it carefully?"),
-                      ],
-                    ),
-                    isRead
-                        ? OutlinedButton(
-                            onPressed: () {
-                              Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (context) => const QuizView()));
-                            },
-                            child: const Text("Next"))
-                        : Container()
-                  ],
-                ),
-              )
+
             ],
           ),
         ),

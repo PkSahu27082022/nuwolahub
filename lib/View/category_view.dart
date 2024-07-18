@@ -3,6 +3,7 @@ import 'package:nuvolahub/AppManager/Component/app_carousel.dart';
 import 'package:nuvolahub/AppManager/Component/image_card.dart';
 import 'package:nuvolahub/Model/news_model.dart';
 import 'package:nuvolahub/Model/user_model.dart';
+import 'package:nuvolahub/View/Account/login_view.dart';
 import 'package:nuvolahub/View/course_view.dart';
 import 'package:nuvolahub/ViewModel/AccountVM/login_view_model.dart';
 import 'package:nuvolahub/ViewModel/category_view_model.dart';
@@ -14,21 +15,18 @@ class CategoryView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context).textTheme;
+    User user=LoginViewModel.of(context).user;
     CategoryViewModel categoryVM = CategoryViewModel.of(context);
     return Scaffold(
       drawer: Drawer(
         child: ListView(
           children: [
-            Selector<LoginViewModel,User>(
-              shouldRebuild: (previous, next) => true,
-              selector: (p0, p1) => p1.user,
-              builder: (context, User user, child) => UserAccountsDrawerHeader(
-                accountName:Text(user.name??""),
-                accountEmail:  Text(user.email??""),
-                currentAccountPicture: CircleAvatar(
-                  backgroundColor: Colors.white,
-                child: Icon(Icons.people,color: Colors.grey.shade300,),
-                ),
+            UserAccountsDrawerHeader(
+              accountName:Text(user.name??""),
+              accountEmail:  Text(user.email??""),
+              currentAccountPicture: CircleAvatar(
+                backgroundColor: Colors.white,
+              child: Icon(Icons.people,color: Colors.grey.shade300,),
               ),
             ),
             ListTile(
@@ -40,26 +38,30 @@ class CategoryView extends StatelessWidget {
             ListTile(
               title: const Text('Logout'),
               onTap: () {
-                // Handle item 2 tap
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginView()),
+                      (Route<dynamic> route) => false, // Pop all routes
+                );
               },
             ),
           ],
         ),
       ),
       appBar: buildAppBar(context),
-      bottomNavigationBar: BottomNavigationBar(
-        elevation: 0,
-        fixedColor: Colors.black87,
-        backgroundColor: Colors.white24,
-        items: const [
-          BottomNavigationBarItem(
-              label: "home", icon: Icon(Icons.home_outlined)),
-          BottomNavigationBarItem(
-              label: "Category", icon: Icon(Icons.category_outlined)),
-          BottomNavigationBarItem(
-              label: "Result", icon: Icon(Icons.file_copy_outlined))
-        ],
-      ),
+      // bottomNavigationBar: BottomNavigationBar(
+      //   elevation: 0,
+      //   fixedColor: Colors.black87,
+      //   backgroundColor: Colors.white24,
+      //   items: const [
+      //     BottomNavigationBarItem(
+      //         label: "home", icon: Icon(Icons.home_outlined)),
+      //     BottomNavigationBarItem(
+      //         label: "Category", icon: Icon(Icons.category_outlined)),
+      //     BottomNavigationBarItem(
+      //         label: "Result", icon: Icon(Icons.file_copy_outlined))
+      //   ],
+      // ),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.only(left: 15, right: 15),
@@ -106,7 +108,7 @@ class CategoryView extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 20),
-                    const Text("Pawan sahu")
+                    Text(user.name??"")
                   ],
                 ),
               ),
@@ -124,6 +126,7 @@ class CategoryView extends StatelessWidget {
                     CategoryRecord list = categoryVM.categoryList[index];
                     return InkWell(
                       onTap: () {
+                        categoryVM.selectedCourse=list;
                         Navigator.push(
                             context,
                             MaterialPageRoute(
